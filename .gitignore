@@ -6,3 +6,10 @@ confined_fraction.dat
 build/
 __pycache__/
 *.pdf
+doc/*.aux
+doc/*.bbl
+doc/*.blg
+doc/*.log
+doc/*.out
+doc/*.fls
+doc/*.fdb_latexmk
