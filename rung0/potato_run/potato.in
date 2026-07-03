@@ -1,0 +1,12 @@
+&potato_nml
+  itest_type = 4
+  E_alpha = 5d3
+  A_alpha = 2d0
+  Z_alpha = 1d0
+  orbit_Rstart = 187.39d0
+  orbit_Zstart = 0.0d0
+  orbit_lambda = 0.3d0
+  Rmax_orbit = 220d0
+  ntimstep = 20000
+  npoicut = 100000
+/
