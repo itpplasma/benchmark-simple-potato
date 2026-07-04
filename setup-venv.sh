@@ -84,6 +84,7 @@ if [ -f "${SIMPLE_DIR}/requirements.txt" ]; then
     python -m pip install --prefer-binary -r "${SIMPLE_DIR}/requirements.txt"
 fi
 
+export CMAKE_ARGS="${CMAKE_ARGS:+${CMAKE_ARGS} }-DBLA_VENDOR=OpenBLAS"
 echo "Installing SIMPLE pysimple package from ${SIMPLE_DIR} ..."
 python -m pip install --no-build-isolation -e "${SIMPLE_DIR}"
 

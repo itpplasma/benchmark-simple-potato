@@ -24,7 +24,9 @@ root run:
 By default this script uses the sibling checkouts in `../SIMPLE` and
 `../NEO-RT`, installs their Python dependencies into `.venv/`, and installs
 SIMPLE's `pysimple` package in editable mode. This avoids the system Python on
-PEP 668-managed machines.
+PEP 668-managed machines. On GNU/Linux it also passes `-DBLA_VENDOR=OpenBLAS`
+to the SIMPLE editable build so the extension matches the OpenBLAS-based NumPy
+and SciPy stack in the shared venv.
 
 Expected checkout layout:
 

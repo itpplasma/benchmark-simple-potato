@@ -61,8 +61,8 @@ unclear) plus issues for everything that needed guesswork.
 
 For Python-driven SIMPLE runs, use the `pysimple` interface from a local virtual
 environment (`./setup-venv.sh` in this repo installs it from `../SIMPLE`).
-Treat `examples/orbits_and_cuts.py` as a legacy backend demo rather than the
-recommended entry point for new workflows.
+`examples/orbits_and_cuts.py` is now a `pysimple.trace_orbit()` plotting example;
+for the shortest supported entry point, start from `examples/simple_api.py`.
 
 ### Rung 1: same field in both codes, one orbit overlaid
 
@@ -130,11 +130,11 @@ Ordered by what Track A needs next.
    SIMPLE frequency estimator (tip/period crossing interpolation); overlay
    and sweep plotting. Batch-first design: one call processes one run
    directory.
-3. `[SIMPLE]` Fix the Python-interface example path: repair or replace
-   `examples/orbits_and_cuts.py`; expose a Poincare-cut driver with plain
-   scalar/array arguments so f90wrap can wrap it (the current
-   `trace_to_cut` signature is not wrappable and silently disappears from
-   the generated interface).
+3. `[SIMPLE]` Keep the repaired `examples/orbits_and_cuts.py` on the supported
+   `pysimple.trace_orbit()` path, and still expose a dedicated Poincare-cut
+   driver with plain scalar/array arguments so f90wrap can wrap it (the current
+   `trace_to_cut` signature is not wrappable and silently disappears from the
+   generated interface).
 4. `[SIMPLE]` Native bounce/precession diagnostic reusing the existing
    tip-detection machinery, once the Python estimator has validated numbers
    (rung 2 exit criterion).
