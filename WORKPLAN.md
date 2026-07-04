@@ -59,9 +59,10 @@ Plot the single orbit in (R, Z) and `omega_b`, `omega_phi` against `rho_pol`.
 Deliverable: short reproduction note (what ran, what the plots show, what was
 unclear) plus issues for everything that needed guesswork.
 
-Known broken, do not use: `examples/orbits_and_cuts.py` in SIMPLE fails at
-import against the current Python interface `[todo:B]` (see Track B list).
-Use `pysimple` (below) instead for Python-driven SIMPLE runs.
+For Python-driven SIMPLE runs, use the `pysimple` interface from a local virtual
+environment (`./setup-venv.sh` in this repo installs it from `../SIMPLE`).
+Treat `examples/orbits_and_cuts.py` as a legacy backend demo rather than the
+recommended entry point for new workflows.
 
 ### Rung 1: same field in both codes, one orbit overlaid
 

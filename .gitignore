@@ -5,6 +5,7 @@ times_lost.dat
 confined_fraction.dat
 build/
 __pycache__/
+.venv/
 *.pdf
 doc/*.aux
 doc/*.bbl

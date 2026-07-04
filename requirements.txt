@@ -1,0 +1,6 @@
+# Python dependencies used directly by the benchmark notebooks/scripts.
+
+numpy>=2.2
+scipy>=1.15
+matplotlib>=3.9
+netCDF4>=1.7
