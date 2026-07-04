@@ -73,8 +73,10 @@ reactivate `.venv` first and reinstall SIMPLE from there.
 - `README.md` - top-level benchmark summary and shared-venv notes
 - `WORKPLAN.md` - rung ladder, task split, current benchmark workflow
 - `doc/benchmark.tex` - physics definitions, metrics, literature, comparison spec
+- `doc/refs.bib` - bibliography used by `doc/benchmark.tex`
+- `doc/benchmark.pdf` - current rendered working document
 - `rung0/` - common circular tokamak inputs and example run directories
-- `doc/` - benchmark documentation sources
+- `doc/` - benchmark document sources and generated LaTeX artifacts
 
 ## Where to look next
 
@@ -85,6 +87,7 @@ Start with:
 1. `README.md`
 2. `WORKPLAN.md`
 3. `doc/benchmark.tex`
+4. `doc/refs.bib` if citations or literature need updating
 
 ### If the task turns into a SIMPLE change
 
@@ -112,6 +115,7 @@ Switch to the sibling repo and read:
 - compare trajectories, frequencies, or confinement outputs,
 - update `WORKPLAN.md`,
 - update `doc/benchmark.tex`,
+- update `doc/refs.bib` when adding or changing citations,
 - add benchmark-side tools or plotting scripts.
 
 ## Commands commonly relevant here
@@ -132,6 +136,11 @@ latexmk -pdf doc/benchmark.tex
 Run that from the repository root or from `doc/`, depending on your preferred
 LaTeX workflow.
 
+The `doc/` directory currently contains both source files and generated LaTeX
+artifacts such as `benchmark.pdf`, `.aux`, `.log`, `.bbl`, and `.fls`. Read
+`benchmark.tex` and `refs.bib` first; treat the other files as build products
+unless the task is specifically about the LaTeX toolchain.
+
 ## Working rules for this repo
 
 - Treat this repo as the **integration / comparison** layer.
@@ -139,6 +148,9 @@ LaTeX workflow.
   task is clearly benchmark-only.
 - Keep notes, plots, and scripts here aligned with the current rung structure in
   `WORKPLAN.md`.
+- When changing benchmark definitions, acceptance criteria, observables, or
+  terminology, update both `WORKPLAN.md` and `doc/benchmark.tex` if they both
+  describe the affected workflow.
 - When documenting procedures, prefer sibling-relative paths (`../SIMPLE`,
   `../NEO-RT`) because that is the expected workspace layout.
 - Keep the repository and `.venv` group read/writeable in the shared workspace.
