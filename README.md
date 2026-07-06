@@ -11,6 +11,15 @@ thin-orbit frequencies as third reference.
 - `WORKPLAN.md`: execution ladder, current status, task split.
 - `rung0/`: common circular-tokamak field inputs for both codes.
 
+## Related benchmarks
+
+- [`benchmark-orbit-proxima`](https://github.com/itpplasma/benchmark-orbit-proxima):
+  companion SIMPLE benchmark in stellarator fields (W7-X high mirror), SIMPLE
+  guiding-centre and full-orbit against ASCOT5 and FIRM3D, including the
+  full-orbit Boris pusher validation.
+- [`SIMPLE`](https://github.com/itpplasma/SIMPLE) and
+  [`NEO-RT`](https://github.com/itpplasma/NEO-RT): the codes under test.
+
 ## Python environment for the benchmark workflow
 
 This repository can host the recommended local virtual environment for the
