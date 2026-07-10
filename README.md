@@ -1,43 +1,21 @@
-# benchmark-simple-potato
+# SIMPLE versus POTATO orbit benchmark
 
-Benchmark of collisionless guiding-centre orbits in axisymmetric tokamak
-fields: [SIMPLE](https://github.com/itpplasma/SIMPLE) (symplectic, canonical
-flux coordinates) against [POTATO](https://github.com/itpplasma/NEO-RT)
-(adaptive RK, cylindrical coordinates, finite orbit width), with NEO-RT
-thin-orbit frequencies as third reference.
+This repository compares collisionless guiding-centre orbits in axisymmetric
+tokamak fields:
 
-- `doc/benchmark.tex`: physics, definitions, metrics, literature
-  (build: `latexmk -pdf benchmark.tex` in `doc/`).
-- `WORKPLAN.md`: execution ladder, current status, task split.
-- `rung0/`: common circular-tokamak field inputs for both codes.
+- [SIMPLE](https://github.com/itpplasma/SIMPLE): symplectic integration in
+  canonical flux coordinates;
+- [POTATO](https://github.com/itpplasma/NEO-RT): adaptive Runge-Kutta
+  integration in cylindrical coordinates with finite orbit width;
+- NEO-RT thin-orbit frequencies as a third reference where applicable.
 
-## Related benchmarks
+The code implementations live in their own repositories. This repository owns
+the common inputs, run procedure, cross-code analysis, plots, and benchmark
+documentation.
 
-- [`benchmark-orbit-proxima`](https://github.com/itpplasma/benchmark-orbit-proxima):
-  companion SIMPLE benchmark in stellarator fields (W7-X high mirror), SIMPLE
-  guiding-centre and full-orbit against ASCOT5 and FIRM3D, including the
-  full-orbit Boris pusher validation.
-- [`SIMPLE`](https://github.com/itpplasma/SIMPLE) and
-  [`NEO-RT`](https://github.com/itpplasma/NEO-RT): the codes under test.
+## Start with Rung 0
 
-## Python environment for the benchmark workflow
-
-This repository can host the recommended local virtual environment for the
-benchmark and the related SIMPLE/NEO-RT Python tooling. From the repository
-root run:
-
-```sh
-./setup-venv.sh
-```
-
-By default this script uses the sibling checkouts in `../SIMPLE` and
-`../NEO-RT`, installs their Python dependencies into `.venv/`, and installs
-SIMPLE's `pysimple` package in editable mode. This avoids the system Python on
-PEP 668-managed machines. On GNU/Linux it also passes `-DBLA_VENDOR=OpenBLAS`
-to the SIMPLE editable build so the extension matches the OpenBLAS-based NumPy
-and SciPy stack in the shared venv.
-
-Expected checkout layout:
+Use sibling checkouts:
 
 ```text
 ../benchmark-simple-potato
@@ -45,17 +23,65 @@ Expected checkout layout:
 ../NEO-RT
 ```
 
-Later, reactivate the same environment with:
+Build SIMPLE and NEO-RT/POTATO, then follow
+[`rung0/README.md`](rung0/README.md). It contains copy-paste run commands,
+the input manifest, coordinate conventions, and Rung 0 acceptance checks.
+
+The two production equilibrium inputs are already tracked:
+
+- `rung0/circ_chartmap_simple.nc` for SIMPLE;
+- `rung0/potato_run/circ.eqdsk` for POTATO.
+
+They describe the same public synthetic circular equilibrium through the two
+codes' native input formats. The field-representation error must still be
+measured before comparing orbits.
+
+SIMPLE commit
+[`08b85a1`](https://github.com/itpplasma/SIMPLE/commit/08b85a11279363693d6b1d5962772ace8df4ea45)
+or newer writes direct cylindrical `R` and `Z` variables to `orbits.nc`. The
+current chart map and POTATO case use centimetres. No canonical-to-VMEC
+conversion is needed for trajectory overlays.
+
+## Documentation
+
+- [`WORKPLAN.md`](WORKPLAN.md): rung ladder, responsibilities, exit criteria,
+  and current implementation status;
+- [`doc/benchmark.tex`](doc/benchmark.tex): physics definitions, comparison
+  metrics, estimators, and acceptance rules;
+- [`rung0/README.md`](rung0/README.md): equilibrium provenance and executable
+  Rung 0 procedure.
+
+Build the working document from the repository root:
 
 ```sh
+latexmk -pdf -cd doc/benchmark.tex
+```
+
+## Python environment
+
+Create the shared environment after placing SIMPLE and NEO-RT in the sibling
+layout:
+
+```sh
+./setup-venv.sh
 source .venv/bin/activate
 ```
 
-If SIMPLE previously configured without Python support and printed `Python
-f90wrap not found, skipping interface build.`, activate this `.venv` first and
-then rerun the SIMPLE Python install inside it:
+The setup script installs this repository's Python requirements, SIMPLE's
+requirements and editable `pysimple` package, and NEO-RT's Python
+requirements. On GNU/Linux it configures the SIMPLE extension for OpenBLAS so
+it matches NumPy and SciPy in the environment.
+
+If SIMPLE was configured before the environment existed, reactivate `.venv`
+and reinstall its Python package:
 
 ```sh
 source .venv/bin/activate
 python -m pip install --no-build-isolation -e ../SIMPLE
 ```
+
+## Related benchmark
+
+[`benchmark-orbit-proxima`](https://github.com/itpplasma/benchmark-orbit-proxima)
+compares SIMPLE guiding-centre and full-orbit trajectories in the W7-X
+high-mirror field against ASCOT5 and FIRM3D.

@@ -1,6 +1,6 @@
 # benchmark-simple-potato
 
-This repository is the **comparison and workflow layer** for orbit benchmarks
+This repository is the comparison and workflow layer for orbit benchmarks
 between the sibling checkouts:
 
 - `../SIMPLE`
@@ -70,13 +70,23 @@ reactivate `.venv` first and reinstall SIMPLE from there.
 
 ## Where the important content lives
 
-- `README.md` - top-level benchmark summary and shared-venv notes
-- `WORKPLAN.md` - rung ladder, task split, current benchmark workflow
-- `doc/benchmark.tex` - physics definitions, metrics, literature, comparison spec
+- `README.md` - entry point and current runnable workflow
+- `WORKPLAN.md` - rung ladder, task split, status, and exit criteria
+- `rung0/README.md` - equilibrium manifest, coordinate conventions, and exact
+  Rung 0 commands
+- `doc/benchmark.tex` - physics definitions, metrics, literature, and
+  comparison specification
 - `doc/refs.bib` - bibliography used by `doc/benchmark.tex`
-- `doc/benchmark.pdf` - current rendered working document
-- `rung0/` - common circular tokamak inputs and example run directories
-- `doc/` - benchmark document sources and generated LaTeX artifacts
+- `rung0/` - public circular tokamak inputs and example run directories
+- `doc/` - benchmark document source and generated LaTeX artifacts
+
+The production Rung 0 equilibrium inputs are
+`rung0/circ_chartmap_simple.nc` for SIMPLE and
+`rung0/potato_run/circ.eqdsk` for POTATO. The chart-map radial coordinate is
+`rho_tor = sqrt(s_tor)` and its geometry uses centimetres. SIMPLE commit
+`08b85a1` or newer writes direct `R,Z` variables to `orbits.nc`; do not add a
+canonical-to-VMEC conversion in benchmark tooling. Generated trajectories,
+plots, and logs are run products, not equilibrium fixtures.
 
 ## Where to look next
 
@@ -86,8 +96,9 @@ Start with:
 
 1. `README.md`
 2. `WORKPLAN.md`
-3. `doc/benchmark.tex`
-4. `doc/refs.bib` if citations or literature need updating
+3. `rung0/README.md`
+4. `doc/benchmark.tex`
+5. `doc/refs.bib` if citations or literature need updating
 
 ### If the task turns into a SIMPLE change
 
@@ -130,16 +141,11 @@ source .venv/bin/activate
 ### Benchmark document
 
 ```bash
-latexmk -pdf doc/benchmark.tex
+latexmk -pdf -cd doc/benchmark.tex
 ```
 
-Run that from the repository root or from `doc/`, depending on your preferred
-LaTeX workflow.
-
-The `doc/` directory currently contains both source files and generated LaTeX
-artifacts such as `benchmark.pdf`, `.aux`, `.log`, `.bbl`, and `.fls`. Read
-`benchmark.tex` and `refs.bib` first; treat the other files as build products
-unless the task is specifically about the LaTeX toolchain.
+Run it from the repository root. Treat `benchmark.pdf`, `.aux`, `.log`, `.bbl`,
+and `.fls` as build products.
 
 ## Working rules for this repo
 
@@ -148,6 +154,8 @@ unless the task is specifically about the LaTeX toolchain.
   task is clearly benchmark-only.
 - Keep notes, plots, and scripts here aligned with the current rung structure in
   `WORKPLAN.md`.
+- Keep equilibrium provenance and run-directory contracts in
+  `rung0/README.md`.
 - When changing benchmark definitions, acceptance criteria, observables, or
   terminology, update both `WORKPLAN.md` and `doc/benchmark.tex` if they both
   describe the affected workflow.

@@ -1,1 +1,1 @@
-/afs/itp.tugraz.at/proj/plasma/CODE/khanm/benchmark-simple-potato/CLAUDE.md
+CLAUDE.md

@@ -4,6 +4,7 @@
 \usepackage{amsmath,amssymb,bm}
 \usepackage{graphicx}
 \usepackage{booktabs}
+\usepackage{tabularx}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,calc}
 \usepackage[round]{natbib}
@@ -25,19 +26,16 @@ TU Graz}
 \begin{abstract}
 SIMPLE and POTATO both integrate collisionless guiding-centre orbits in
 toroidal magnetic fields, with different numerics: SIMPLE uses symplectic
-integrators in canonical straight-field-line coordinates, POTATO an adaptive
+integrators in canonical coordinates, POTATO an adaptive
 Runge--Kutta scheme in cylindrical coordinates with event-based orbit closure.
 In an axisymmetric tokamak field both solve the same integrable problem, so
 every observable of a single orbit is directly comparable: conserved
 quantities, bounce and transit frequency, toroidal precession, orbit width,
-and Poincar\'e sections. This document defines that comparison. It collects
-the required guiding-centre theory with all conventions spelled out, describes
-the working principles and interfaces of the two codes together with the
-thin-orbit frequencies of NEO-RT as a third reference, and specifies the
-common test field and the comparison metrics with their estimators and
-acceptance criteria. The
-step-by-step execution plan with current implementation status lives in
-\code{WORKPLAN.md} in the repository root.
+and Poincar\'e sections. This document fixes the coordinate and pitch
+conventions, common field, estimators, and acceptance criteria. NEO-RT
+thin-orbit frequencies provide a third reference. The repository work plan
+gives the executable procedure and current status; the Rung 0 README gives the
+input manifest.
 \end{abstract}
 
 \section{Purpose}
@@ -50,12 +48,11 @@ observable up to their discretisation errors, which have known and very
 different structure in the two cases. Agreement across the trapped--passing
 boundary and in the near-axis region, where orbit widths are largest, is a
 verification result that neither code currently has against the other.
-Disagreement that survives resolution scans localises a defect. Both outcomes
-are useful, and the machinery built for the comparison (a common analytic
-field, frequency extraction, orbit overlays) is reusable for later benchmarks
-against other orbit codes.
+Disagreement that survives resolution scans localises a defect. The common
+field, frequency extraction, and orbit overlays can then be reused for later
+orbit-code benchmarks.
 
-The scope of this document is deliberately narrow: axisymmetric, unperturbed,
+The scope is axisymmetric, unperturbed,
 collisionless, static fields, single-particle observables. Perturbed fields,
 transport coefficients, and stellarator geometry are not treated here;
 Section~\ref{sec:outlook} points to where they connect.
@@ -130,27 +127,31 @@ the benchmark:
 \subsection{Orbit classes}
 \label{sec:classes}
 
-Define the pitch at the outboard midplane of a flux surface,
-$\xi_0 = v_\parallel(\theta{=}0)/v$, or equivalently the trapping parameter
-$\lambda = \mu B_0 / E$. In the circular model \eqref{eq:Bcirc} the parallel
-velocity along the orbit is
+Define the pitch cosine at the outboard midplane of a flux surface as
+$\xi_0 = v_\parallel(\theta{=}0)/v$. The analytic trapping parameter is
+$\Lambda = \mu B_0/E$. For a given surface they are related by
 \begin{equation}
-  v_\parallel^2 \;=\; v^2\,\bigl[\,1 - \lambda\,(1-\varepsilon\cos\theta)\,\bigr].
+  \Lambda = (1-\xi_0^2)\,\frac{B_0}{B(\theta=0)}.
+\end{equation}
+The code inputs use $\xi$, while the analytic formulas below use $\Lambda$.
+In the circular model \eqref{eq:Bcirc} the parallel velocity along the orbit is
+\begin{equation}
+  v_\parallel^2 \;=\; v^2\,\bigl[\,1 - \Lambda\,(1-\varepsilon\cos\theta)\,\bigr].
 \end{equation}
 A particle is trapped when $v_\parallel$ vanishes at some $\theta_t$ before
 completing a poloidal turn, i.e.\ for
-$1/(1+\varepsilon) < \lambda < 1/(1-\varepsilon)$; otherwise it is passing.
+$1/(1+\varepsilon) < \Lambda < 1/(1-\varepsilon)$; otherwise it is passing.
 The boundary between the two classes, the trapped--passing separatrix, is a
-codimension-one surface in $(\lambda,\varepsilon)$; the bounce time diverges
+codimension-one surface in $(\Lambda,\varepsilon)$; the bounce time diverges
 logarithmically as it is approached, which makes it the numerically hardest
 region and therefore a mandatory part of every scan in this benchmark.
 
 Finite orbit width adds structure near the magnetic axis: when the poloidal
 gyration width becomes comparable to the distance from the axis, trapped
-orbits deform into \emph{potato} orbits that enclose the axis. POTATO is
-designed to resolve this class exactly; SIMPLE carries the full orbit as well,
-so the near-axis region is a genuine comparison point rather than a corner
-case to be excluded. Figure~\ref{fig:orbits} sketches the three classes.
+orbits deform into \emph{potato} orbits that enclose the axis. POTATO resolves
+this class numerically; SIMPLE also integrates the finite-width guiding-centre
+orbit. The near-axis region is therefore part of the comparison.
+Figure~\ref{fig:orbits} sketches the three classes.
 
 \begin{figure}[htb]
 \centering
@@ -199,27 +200,26 @@ per orbit \citep{albert2016}:
 where $\tau_b$ is the time for one closed poloidal cycle and
 $\Delta\varphi_b$ the toroidal angle accumulated during it. For passing
 particles $\Delta\varphi_b \approx 2\pi q$ plus a drift correction; for
-trapped particles $\Delta\varphi_b$ is the net precession per bounce. These
-two numbers are the physically most meaningful scalar outputs of a single
-orbit: every resonance condition of perturbed transport theory is a linear
+trapped particles $\Delta\varphi_b$ is the net precession per bounce. Every
+resonance condition of perturbed transport theory is a linear
 integer combination $m\,\omega_b + n\,\omega_\varphi$, which stays finite and
 smooth across the trapped--passing boundary even though $\tau_b$ and
 $\Delta\varphi_b$ individually diverge there. Comparing $\omega_b$ and
-$\omega_\varphi$ between codes therefore tests exactly the quantities that
+$\omega_\varphi$ between codes therefore tests the quantities that
 downstream applications consume.
 
 For the circular model, standard large-aspect-ratio expressions exist in
 terms of complete elliptic integrals $K(\kappa)$ and $E(\kappa)$ with
 \begin{equation}
-  \kappa^2 \;=\; \frac{1-\lambda(1-\varepsilon)}{2\,\varepsilon\lambda},
+  \kappa^2 \;=\; \frac{1-\Lambda(1-\varepsilon)}{2\,\varepsilon\Lambda},
 \end{equation}
 $\kappa^2 \in (0,1)$ for trapped orbits: the deeply trapped bounce frequency
-$\omega_b \to \sqrt{\varepsilon\lambda/2}\;v/(qR_0)\cdot
+$\omega_b \to \sqrt{\varepsilon\Lambda/2}\;v/(qR_0)\cdot
 \pi/(2K(\kappa))\big|_{K(0)=\pi/2}$, and a trapped precession of the form
 $\omega_\varphi \propto \bigl(2E(\kappa)/K(\kappa)-1\bigr)$ with magnetic-shear
 corrections; see \citet{helander2002} for the derivation and conventions.
 These formulas serve as sanity envelopes for rung~2 of the work plan. Because
-convention factors of order $\lambda \approx 1$ differ between references,
+convention factors of order $\Lambda \approx 1$ differ between references,
 they must be re-derived in the chosen normalisation before being used as
 quantitative acceptance bounds; until then, code-versus-code agreement is the
 primary criterion and the analytic forms bound the plausible range.
@@ -236,17 +236,17 @@ in the circular model
 up to a factor of order unity depending on $\kappa$. The width is directly
 measurable in both codes from the $(R,Z)$ footprint of one closed orbit and,
 unlike the frequencies, requires no time information, so it cross-checks the
-orbit geometry before any clock enters the comparison. Near the axis, where \eqref{eq:width} formally exceeds the
-distance to the axis, the banana picture gives way to the potato class and
-the width must be compared numerically rather than against the estimate.
+orbit geometry before any clock enters the comparison. Near the axis, where
+\eqref{eq:width} formally exceeds the distance to the axis, the banana picture
+gives way to the potato class and the width must be compared numerically
+rather than against the estimate.
 
 \subsection{Poincar\'e sections}
 \label{sec:poincare}
 
 A Poincar\'e section reduces the continuous orbit to a discrete map: record
 the phase-space point each time the orbit crosses a chosen surface of
-section in a fixed direction. Two sections are natural here and are already
-realised in the codes' machinery:
+section in a fixed direction. The benchmark uses two sections:
 \begin{itemize}
 \item the \emph{tip section} $v_\parallel = 0$ for trapped orbits (banana
   tips), and
@@ -256,9 +256,9 @@ realised in the codes' machinery:
 In an axisymmetric field every orbit is a single closed curve in the poloidal
 plane, so its section is a finite set of points; numerical non-conservation
 smears these points into small islands or drifting clusters, which makes the
-section a sensitive visual and quantitative diagnostic. The same machinery
-carries over unchanged to perturbed and three-dimensional fields, where
-section structure distinguishes regular from chaotic orbits.
+section a sensitive visual and quantitative diagnostic. The same section
+definitions apply to perturbed and three-dimensional fields, where the point
+set distinguishes regular from chaotic orbits.
 
 \section{The codes}
 \label{sec:codes}
@@ -270,34 +270,37 @@ schemes formulated in canonical straight-field-line coordinates
 \citep{albert2025}. Field input is a flux-coordinate description: VMEC
 equilibria or a Boozer chart map (a NetCDF file tabulating the coordinate
 chart and field on a grid). The state vector is
-$z = (s, \theta, \varphi, p, \lambda)$ with normalised toroidal flux $s$,
+$z = (s, \theta, \varphi, p, \xi)$ with normalised toroidal flux $s$,
 poloidal and toroidal angles, momentum modulus $p$, and pitch
-$\lambda = v_\parallel/v$; the integrator state carries the canonical pair
-including $p_\varphi$ directly, so the invariant drift of $H$ and $p_\varphi$
-is available at machine precision along the trace. Available schemes range
+$\xi = v_\parallel/v$. The integrator state carries the canonical pair
+including $p_\varphi$ directly, so $H$ and $p_\varphi$ can be evaluated along
+the trace and their numerical drift measured. Available schemes range
 from explicit-implicit Euler through midpoint to Gauss and Lobatto
 Runge--Kutta variants; a fourth-order Runge--Kutta reference and an optional
 gyro-resolved full-orbit (Boris) pusher exist for cross-checks. The main
 program traces particle ensembles with OpenMP parallelism and writes loss
-times, confined fractions, and orbit classification; a Python layer
+times, confined fractions, orbit classification, reference coordinates, and
+direct cylindrical $R,Z$ trajectory variables. The latter are evaluated
+through the active VMEC or chart-map geometry and carry a NetCDF unit
+attribute. A Python layer
 (\code{pysimple}, built on f90wrap \citep{kermode2020}) exposes batch tracing
 where one call integrates $N$ particles for a full trace time, so no
 per-timestep call overhead occurs at the language boundary.
 
-Relevant present limitations, taken from a source-level review (2026-07-03)
-and tracked in \code{WORKPLAN.md}: the Poincar\'e-cut module
-(\code{cut\_detector}, including \code{trace\_to\_cut}) exists but is not
-exercised by any Fortran caller, and the Python example that used it does not
-run against the current interface; bounce and precession frequencies are not
-computed anywhere in the code; there is no EQDSK input path. Orbit
-classification uses an independent in-code reimplementation of the tip and
-period detection.
+Current limitations, reviewed on 2026-07-10 and tracked in
+\code{WORKPLAN.md}: the trajectory example works through
+\code{pysimple.trace\_orbit}, but the dedicated Poincar\'e-cut routine has no
+wrapped public driver; bounce and precession frequencies are not computed by
+SIMPLE; and SIMPLE has no direct EQDSK input path. Orbit classification uses
+an independent in-code implementation of tip and period detection.
 
 \subsection{POTATO}
 
 POTATO computes finite-orbit-width guiding-centre orbits in cylindrical
 coordinates directly from an EFIT g-file (EQDSK), read through the shared
-library libneo. The state vector is $z=(R,\varphi,Z,p,\lambda)$. Integration
+library libneo. The state vector is $z=(R,\varphi,Z,p,\xi)$. POTATO retains
+the historical input name \code{orbit\_lambda} for $\xi=v_\parallel/v$.
+Integration
 uses an adaptive Runge--Kutta--Cash--Karp scheme; one closed poloidal cycle is
 detected by crossings of a precomputed reference curve (the line where
 $\nabla\psi\times\nabla B$ vanishes, reducing to the midplane in up-down
@@ -338,22 +341,22 @@ as POTATO's frequency scan) already exists in the NEO-RT test tree.
 \begin{table}[htb]
 \centering
 \small
-\begin{tabular}{@{}llll@{}}
+\begin{tabularx}{\textwidth}{@{}lXXX@{}}
 \toprule
  & SIMPLE & POTATO & NEO-RT (thin orbit) \\
 \midrule
 orbit model & finite width, GC & finite width, GC & zero width, bounce avg. \\
-coordinates & canonical flux & cylindrical $(R,\varphi,Z)$ & flux surface label \\
+coordinates & canonical flux; direct $R,Z$ output & cylindrical $(R,\varphi,Z)$ & flux surface label \\
 integrator & symplectic (var.) & adaptive RK45 & adaptive Adams (VODE) \\
 orbit closure & none (time stepping) & section crossing + Newton & turn event detection \\
 field input & VMEC, Boozer chartmap & EQDSK via libneo & Boozer text / chartmap \\
 $\omega_b,\ \omega_\varphi$ & absent (to be added) & native scan modes & native, splined \\
-Poincar\'e cuts & module present, unused & section infrastructure & n/a \\
+Poincar\'e cuts & wrapped driver pending & section infrastructure & n/a \\
 potato class & carried implicitly & resolved and classified & outside model \\
 Python layer & \code{pysimple} (f90wrap) & none & none \\
 parallelism & OpenMP (+ GPU exp.) & OpenMP & OpenMP \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \caption{Capabilities relevant to this benchmark, as of July 2026.}
 \label{tab:features}
 \end{table}
@@ -364,24 +367,24 @@ parallelism & OpenMP (+ GPU exp.) & OpenMP & OpenMP \\
 \subsection{Common field}
 \label{sec:field}
 
-Both codes must see the identical magnetic field; otherwise every metric
-confounds field representation with orbit integration. The bridge is the
-analytic circular tokamak equilibrium implemented in libneo:
+Both codes use representations of the same synthetic circular equilibrium.
+Their interpolation mismatch must be measured before it can be separated from
+an orbit-integration difference. The tracked inputs are:
 \begin{itemize}
-\item POTATO reads it as a synthetic EQDSK g-file (\code{circ.eqdsk}),
-  regenerated by a public script; this is the same field as POTATO's
-  golden-record test case.
-\item SIMPLE reads the same field as a Boozer chart map. The clean conversion
-  path EQDSK $\to$ Boozer chart map is under construction in libneo; interim
-  chart maps for the circular case are stored in \code{rung0/} of this
-  repository.
+\item POTATO reads \code{rung0/potato\_run/circ.eqdsk}, a byte-identical copy
+  of its public synthetic golden-record equilibrium.
+\item SIMPLE reads \code{rung0/circ\_chartmap\_simple.nc}. It was produced
+  from that EQDSK with libneo's merged EQDSK-to-Boozer converter, then
+  resampled onto SIMPLE's axis-complete uniform grid. Geometry is in
+  centimetres and the radial coordinate is
+  $\rho_{\mathrm{tor}}=\sqrt{s_{\mathrm{tor}}}$.
 \end{itemize}
-One trap deserves a boxed warning: SIMPLE's built-in analytic test field
-(\code{isw\_field\_type = -1}) is a \emph{different} hardcoded circular field
-and is not the equilibrium behind \code{circ.eqdsk}. It must not be used for
-this benchmark. Field identity is verified before any orbit comparison by
+Do not use SIMPLE's built-in analytic test field
+(\code{isw\_field\_type = -1}); it is a different hardcoded circular field.
+The representation error is measured before any orbit comparison by
 sampling $B$ and $\psi$ of both representations along matched $(R,Z)$ points
-(rung~0 of the work plan).
+(rung~1 of the work plan). The complete file manifest and generation chain are
+in \code{rung0/README.md}.
 
 \begin{figure}[htb]
 \centering
@@ -392,7 +395,8 @@ sampling $B$ and $\psi$ of both representations along matched $(R,Z)$ points
 ]
   \node[box] (libneo) {libneo analytic\\circular tokamak};
   \node[box, below left=of libneo] (eqdsk) {\code{circ.eqdsk}\\(EQDSK g-file)};
-  \node[box, below right=of libneo] (chart) {Boozer chart map\\(NetCDF)};
+  \node[box, below right=of libneo] (chart) {
+    \code{circ\_chartmap\_simple.nc}\\(Boozer chart map)};
   \node[box, below=of eqdsk] (potato) {POTATO};
   \node[box, below=of chart] (simple) {SIMPLE};
   \node[box, below right=of potato] (metrics) {invariant drift, $\omega_b$, $\omega_\varphi$,\\
@@ -416,22 +420,24 @@ coordinates.}
 
 The reference particle is a deuteron ($A=2$, $Z=1$) at $E = 5\,$keV, taken
 from the POTATO golden-record case so that its profiles are reused unchanged.
-Around this reference, three one-dimensional sweeps:
+We run three one-dimensional sweeps:
 \begin{enumerate}
-\item \textbf{Radial}: flux surface label $\rho_{\mathrm{pol}}$ from near-axis
-  to near-edge at fixed pitch, crossing the potato region deliberately.
-\item \textbf{Pitch}: $\lambda$ through the trapped--passing boundary at fixed
-  surface and energy, with points clustered toward the separatrix where
-  $\tau_b$ diverges logarithmically.
+\item \textbf{Radial}: select $\rho_{\mathrm{pol}}$ on the EQDSK side and
+  match the same physical surface on the chart-map side. Do not identify
+  POTATO's $\rho_{\mathrm{pol}}$ numerically with SIMPLE's
+  $\rho_{\mathrm{tor}}$. Scan from near-axis to near-edge at fixed pitch.
+\item \textbf{Pitch}: $\xi=v_\parallel/v$ through the trapped--passing
+  boundary at fixed surface and energy, with points clustered toward the
+  separatrix where $\tau_b$ diverges logarithmically.
 \item \textbf{Energy}: widening the orbit width at fixed surface and pitch,
-  from 1\,keV until the potato/loss physics intervenes; this sweep controls
-  the convergence toward the NEO-RT thin-orbit limit.
+  from 1\,keV until potato or loss physics intervenes. This sweep controls the
+  convergence toward the NEO-RT thin-orbit limit.
 \end{enumerate}
 
 \subsection{Metrics and estimators}
 \label{sec:metrics}
 
-For one orbit at fixed $(\rho_{\mathrm{pol}}, \lambda, E)$:
+For one orbit at a fixed physical surface, pitch cosine $\xi$, and energy $E$:
 \begin{enumerate}
 \item \textbf{Invariant drift}: relative drift of $E$ and $p_\varphi$
   (via $\psi^*$) over the trace, reported against trace length and step count.
@@ -440,7 +446,7 @@ For one orbit at fixed $(\rho_{\mathrm{pol}}, \lambda, E)$:
   POTATO: native (\code{find\_bounce}-based scan modes).
   NEO-RT: native splined thin-orbit values.
   SIMPLE: post-processed from trajectory output. The estimator interpolates
-  the zero crossings $t_k$ of $\lambda(t)$ (banana tips; two per bounce), so
+  the zero crossings $t_k$ of $\xi(t)$ (banana tips; two per bounce), so
   for trapped orbits
   \begin{equation}
     \tau_b = t_{k+2} - t_k, \qquad
@@ -462,12 +468,15 @@ For one orbit at fixed $(\rho_{\mathrm{pol}}, \lambda, E)$:
 
 \subsection{Comparison coordinates}
 
-POTATO is native in $(R,\varphi,Z)$. SIMPLE output in canonical flux
-coordinates is converted per point through the chain canonical $\to$ VMEC
-angles $\to$ cylindrical, using the conversion routines exposed through the
-Python layer. All overlays, widths, and section plots are compared in
-$(R,Z)$; frequencies are coordinate-independent scalars and need no
-conversion.
+POTATO is native in $(R,\varphi,Z)$. SIMPLE commit \code{08b85a1} or newer
+writes direct $R$ and $Z$ variables to \code{orbits.nc} through the active
+reference geometry. Their NetCDF \code{units} attributes are authoritative;
+both Rung 0 inputs use centimetres. No canonical-to-VMEC conversion is needed.
+For chart-map runs, the legacy variable named \code{s} contains
+$\rho_{\mathrm{tor}}$, as recorded by the global attributes
+\code{coordinate\_type=chartmap} and \code{radial\_coordinate=rho}. Untraced
+samples remain NaN. All overlays, widths, and section plots use finite
+$(R,Z)$ samples; frequencies are coordinate-independent scalars.
 
 \subsection{Convergence and acceptance}
 
@@ -479,15 +488,19 @@ resolution artefact and the scan documents the required settings. The near
 separatrix region gets a dedicated convergence appendix in the final report,
 since both codes lose accuracy there for different reasons (SIMPLE: fixed
 step across a diverging period; POTATO: event detection on flattening
-crossings). Acceptance for rungs~1--4 of the work plan is relative agreement
-of $\omega_b$ and $\omega_\varphi$ at the $10^{-4}$ level away from the
-separatrix, tightened or relaxed per rung in \code{WORKPLAN.md} as the data
-comes in.
+crossings). Rung~1 records the maximum and RMS field-representation mismatch
+before tracing matched orbits. Acceptance for rungs~1--4 requires internal
+resolution changes below one tenth of the reported code-to-code difference.
+Away from the separatrix, the target for $\omega_b$ and $\omega_\varphi$ is a
+relative difference no larger than $10^{-4}$. If the measured field mismatch
+prevents that target, the field conversion must be improved before the orbit
+integrators are judged. Near the separatrix, no point is accepted until its
+individual resolution scan converges.
 
 \section{Outlook}
 \label{sec:outlook}
 
-The machinery assembled here extends in three directions. First, the same
+The benchmark extends in three directions. First, the same
 frequency interfaces feed resonant transport theory, where all regimes reduce
 to quadratures over resonance lines $m\,\omega_b + n\,\omega_\varphi = 0$ in
 invariant space \citep{albert2016,buchholz2022}; verified finite-width
@@ -496,7 +509,7 @@ the axisymmetric tokamak is the symmetric limit of quasisymmetric
 stellarators, where the analogous orbit and transport structure is an active
 research front \citep{catto2023,foster2025,chambliss2024}; a tokamak-verified
 frequency and orbit toolchain transfers there with the field input exchanged.
-Third, verified single-orbit machinery is the base layer for ensemble
+Third, verified single-orbit methods are the base layer for ensemble
 statistics, where established Monte Carlo orbit codes such as ASCOT5
 \citep{varje2019}, GORILLA \citep{eder2020}, and the recent FIRM3D suite
 \citep{paul2026} provide natural later comparison targets beyond the
