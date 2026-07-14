@@ -142,6 +142,44 @@ With `itest_type = 4`, the trajectory is written to `fort.100`. Its columns
 are `R phi Z p xi dxi/dtau`, although the POTATO input and output interfaces
 retain the historical name `lambda` for `xi`. `R` and `Z` are in centimetres.
 
+The last row of `profile_poly.in` is deliberately zero: Rung 0 has no radial
+electric potential, matching the SIMPLE Hamiltonian. A nonzero last row can
+change the orbit class and makes POTATO's normalized momentum vary.
+
+## Post-process the trajectories
+
+The benchmark-side analysis tools grew out of Majid Khan's first quantitative
+comparison. Run them from the repository root after staging both outputs:
+
+```sh
+python tools/analyze_simple_orbit.py "$run_root/simple/orbits.nc" \
+  --json "$run_root/simple/orbit-diagnostics.json"
+python tools/compare_orbits.py \
+  "$run_root/simple/orbits.nc" "$run_root/potato/fort.100" \
+  --output "$run_root/orbit-overlay.png"
+```
+
+For a POTATO `itest_type = 5` run:
+
+```sh
+python tools/plot_potato_frequency_scan.py \
+  "$run_root/potato/freq_scan.dat" \
+  --output "$run_root/potato-frequency-scan.png"
+```
+
+The SIMPLE analyzer follows the benchmark definition in
+`doc/benchmark.tex`: it interpolates the `v_par = 0` tips and measures a full
+bounce from tip `k` to tip `k+2`. POTATO's `find_bounce` uses a refined return
+section, but both estimators represent one physical bounce. A discrepancy is
+therefore a comparison diagnostic, not a reason to silently change the SIMPLE
+event definition.
+
+In `freq_scan.dat`, `omega_b` and `omega_phi` are already physical angular
+frequencies. The `taub` column is POTATO's length-like normalized bounce
+quantity; physical time is `taub/v0`, not `taub` itself. Match the first finite
+SIMPLE `R,Z` point to POTATO before comparing rows—matching a radial minimum or
+assigning equal numerical values to `rho_tor` and `rho_pol` is not equivalent.
+
 ## Rung 0 acceptance
 
 Rung 0 is complete when:
