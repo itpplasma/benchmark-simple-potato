@@ -59,6 +59,8 @@ POTATO modes used here:
   summary `taub`, `delphi` to stdout.
 - `itest_type = 5`: radial frequency scan; writes `freq_scan.dat`
   (`R_start rho_pol omega_b omega_phi taub delphi ierr`).
+  `omega_b` and `omega_phi` are physical angular frequencies; the length-like
+  `taub` must be divided by POTATO's reference speed `v0` to obtain seconds.
 
 POTATO retains the input key `orbit_lambda`, but its value is the pitch cosine
 `xi = v_parallel/v`. Reserve `Lambda = mu B0/E` for the analytic trapping
@@ -106,10 +108,10 @@ Goal: omega_b and omega_phi from three sources on one plot.
 - NEO-RT thin orbit `[works, manual]`: `test_freq_scan.f90` builds with the
   test suite and writes `freq_scan_neort.dat` on the same columns; registered
   as an automated test `[todo:B]`.
-- SIMPLE `[todo:B]`: Python estimator over trajectory output (tip-crossing
-  interpolation, as specified in doc/benchmark.tex section Metrics). Lands in
-  `tools/` of this repo; Track A uses and reviews it, checks its
-  sampling-resolution convergence.
+- SIMPLE `[works, manual]`: `tools/analyze_simple_orbit.py`
+  performs tip-crossing interpolation as specified in `doc/benchmark.tex`
+  section Metrics. Track A checks its sampling-resolution convergence before
+  frequency differences are accepted.
 
 Scan the pitch cosine `xi` through the trapped-passing boundary at fixed
 surface and energy, with points clustered toward the separatrix. Document the

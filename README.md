@@ -72,6 +72,11 @@ requirements and editable `pysimple` package, and NEO-RT's Python
 requirements. On GNU/Linux it configures the SIMPLE extension for OpenBLAS so
 it matches NumPy and SciPy in the environment.
 
+Reusable post-processing scripts live in `tools/`. In particular,
+`analyze_simple_orbit.py` extracts interpolated trapped-orbit tips and
+frequencies from SIMPLE output, while `compare_orbits.py` overlays matched
+SIMPLE and POTATO trajectories in physical cylindrical coordinates.
+
 If SIMPLE was configured before the environment existed, reactivate `.venv`
 and reinstall its Python package:
 
