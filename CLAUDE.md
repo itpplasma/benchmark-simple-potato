@@ -68,6 +68,23 @@ source .venv/bin/activate
 If the SIMPLE Python extension was previously built without Python support,
 reactivate `.venv` first and reinstall SIMPLE from there.
 
+### Portable builds on the shared filesystem
+
+SIMPLE build directories under `/proj/plasma` are used from more than one
+machine. Never build them with `CONFIG=Fast`: that profile enables
+`-march=native`, so binaries or Python extensions can fail with an illegal
+instruction when another machine accesses the same network directory. Use the
+portable Release profile for shared builds:
+
+```bash
+source .venv/bin/activate
+make -C ../SIMPLE clean
+make -C ../SIMPLE CONFIG=Release
+```
+
+Use `Fast` only for a machine-local build directory that will never be executed
+on another host.
+
 ## Where the important content lives
 
 - `README.md` - entry point and current runnable workflow
