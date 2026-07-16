@@ -69,15 +69,22 @@ def q_of_r(r):
     return Q0 + (QA - Q0) * (r / A) ** 2
 
 
-def psi_of_r():
+def psi_of_r(r_max=A):
     """Poloidal flux psi(r) (per radian) that realizes q_of_r exactly.
 
     For concentric circular surfaces the flux-surface q is
     q = f*r/(psi'(r)*sqrt(R0^2-r^2)) with f = R0*B0, so
     psi'(r) = R0*B0*r/(q(r)*sqrt(R0^2-r^2)). Integrate outward, psi(0)=0.
+
+    r_max may exceed the boundary radius A: the same smooth formula then
+    continues psi outside the LCFS. This matters for the psi MAP: clamping
+    psi at its boundary value outside the LCFS puts a gradient kink at
+    r = A that the bicubic spline of any reader smears over one or two
+    grid cells, corrupting |grad psi| (and with it every flux-surface
+    quantity) in the outermost few percent of the plasma.
     """
     n = 4096
-    r = np.linspace(0.0, A, n)
+    r = np.linspace(0.0, r_max, n)
     dpsidr = np.zeros(n)
     dpsidr[1:] = (R0 * B0 * r[1:]
                   / (q_of_r(r[1:]) * np.sqrt(R0 ** 2 - r[1:] ** 2)))
@@ -97,10 +104,10 @@ def build_eqdsk():
     Z = zboxmid - 0.5 * zboxlength + np.linspace(0.0, zboxlength, NZ)
     RR, ZZ = np.meshgrid(R, Z)  # shape (NZ, NR), matching read/write layout
 
-    r_tab, psi_tab = psi_of_r()
-    psi_edge = psi_tab[-1]
     rho = np.sqrt((RR - R0) ** 2 + ZZ ** 2)
-    PsiVs = np.interp(rho, r_tab, psi_tab, right=psi_edge)
+    r_tab, psi_tab = psi_of_r(r_max=1.02 * float(rho.max()))
+    psi_edge = float(np.interp(A, r_tab, psi_tab))
+    PsiVs = np.interp(rho, r_tab, psi_tab)
 
     # Toroidal field: constant f = R0*B0 (vacuum, low beta), so B_tor = f/R.
     fprof = np.full(NR, R0 * B0)

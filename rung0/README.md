@@ -11,7 +11,7 @@ comparing trajectories.
 | `potato_run/circ.eqdsk` | POTATO equilibrium: synthetic 129 x 129 EQDSK with `R0 = 6.20 m`, `a = 2.00 m`, and `B0 = 5.3 T` (reactor size) |
 | `circ_chartmap_simple.converter.nc` | Direct EQDSK-to-Boozer-chart-map output on the converter grid; provenance input, not the SIMPLE run input |
 | `circ_chartmap_simple.nc` | SIMPLE input: axis-complete uniform grid with 101 radial points, 48 poloidal points, and 4 toroidal planes |
-| `wout_circ.nc` | VMEC variant of the same case (VMEC++ fixed-boundary re-solve); exercises SIMPLE's native VMEC input path |
+| `wout_circ.nc` | The same field written in VMEC wout format (direct geometry transcription, no equilibrium solve); exercises SIMPLE's native VMEC input path |
 | `simple_run/circ_chartmap.nc` | Relative symlink to `circ_chartmap_simple.nc` under the filename used by `simple.in` |
 
 The equilibrium is reactor-size so that both the 5 keV deuterium benchmark
@@ -23,7 +23,11 @@ The generator is [`gen_circular_eqdsk.py`](gen_circular_eqdsk.py) in this
 directory. It derives from NEO-RT's public POTATO gate generator but writes
 reactor-scale parameters and a poloidal flux that realizes the flux-surface
 safety factor `q(r) = 1.5 + 2.5 (r/a)^2` exactly on the concentric-circle
-model (the NEO-RT original uses a cylindrical midplane estimate). The file is
+model (the NEO-RT original uses a cylindrical midplane estimate), and it
+continues `psi` smoothly beyond the LCFS instead of clamping it at the
+boundary value (the clamp puts a gradient kink at the LCFS that spline
+readers smear over one or two grid cells, corrupting flux-surface
+quantities in the outermost few percent of the plasma). The file is
 therefore no longer byte-identical to NEO-RT's golden-record input.
 Regenerating the EQDSK needs libneo with the fixed-column g-file header
 writer (itpplasma/libneo#396); regenerating the chart map needs libneo with
@@ -40,8 +44,8 @@ both work for shaped tokamaks, not only this circular case:
 PYTHONPATH=../libneo/python:../SIMPLE/build/_deps/libneo-build \
     python tools/eqdsk_to_simple_chartmap.py input.eqdsk output_chartmap.nc
 
-# EQDSK -> VMEC wout NetCDF (VMEC++ fixed-boundary re-solve)
-PYTHONPATH=../libneo/python \
+# EQDSK -> VMEC wout NetCDF (direct transcription of the g-file field)
+PYTHONPATH=../libneo/python:../SIMPLE/build/_deps/libneo-build \
     python tools/eqdsk_to_vmec.py input.eqdsk wout_output.nc
 ```
 
@@ -51,33 +55,44 @@ flux-surface scan at the g-file boundary flux (`psimax`). This matters for
 synthetic equilibria without an X-point, such as this circular case: their
 `psi` keeps rising beyond the LCFS, so the converter's default field-line
 "separatrix search" runs to the computational box edge and would place `s = 1`
-on the wrong surface (besides taking hours instead of seconds). `eqdsk_to_vmec.py` reproduces
-`wout_circ.nc`; it extracts the boundary, pressure, and a safety-factor
-profile computed from the psi map itself (robust against g-files whose q
-column is inconsistent with their psi map), then re-solves the fixed-boundary
-equilibrium with VMEC++. Because the concentric-circle model field is not a
-Grad-Shafranov solution, the VMEC variant is force-balanced with the same
-boundary and profiles rather than bit-identical: expect axis quantities to
-differ at the few-percent level (Shafranov shift). Treat chart-map and VMEC
-runs as two representations of the same case, not as one identical field.
+on the wrong surface (besides taking hours instead of seconds).
+
+`eqdsk_to_vmec.py` reproduces `wout_circ.nc`. Its default mode transcribes
+the g-file's own flux-surface geometry into wout Fourier variables using the
+straight-field-line angle (`lambda = 0`), with `iota` from the flux-surface
+line integral `q = f/(2 pi) * loop-integral dl/(R |grad psi|)`. No
+equilibrium is solved, so SIMPLE's VMEC input path traces the SAME field as
+the g-file and POTATO. With `--resolve`, VMEC++ instead re-solves the
+fixed-boundary equilibrium from the extracted boundary, pressure, and iota
+profile; a model g-file that is not a Grad-Shafranov solution then acquires
+its Shafranov shift (~12 cm axis shift here) and orbit quantities move at
+the percent level (trapped precession by ~13 %). Use `--resolve` only when
+a force-balanced variant is wanted explicitly.
 
 Committed equilibrium checksums:
 
 ```text
-56a85dbec7661b6f119ff666f8089ab80907acc17191d8dee3c58c5be71495b1  potato_run/circ.eqdsk
-ebdaf7e73b889f379a749ee299b54a9e8db4742f73dd41bc066069f4547ed4e2  circ_chartmap_simple.converter.nc
-d778be3b96ca54fa82d97f1968da928b59678f84a95d89429c16f2c3e864c83a  circ_chartmap_simple.nc
-90972759c9c345aa27785b85a8edca8bcbcc3ec5bc2d3bc2150ffe0ac3e3cd57  wout_circ.nc
+1f1a0e9876ee79cdeb26ef9b96b8944f9811222f9b38793dfade33ab77fb1b25  potato_run/circ.eqdsk
+5b7f96a04bb0b42e0585fe8beabb3b3925115354ad5bb9aba6402880cdfe7189  circ_chartmap_simple.converter.nc
+0af60ff1b301de513f4681658e7b03c3a786621beb20585e50caab4a49d5dd0e  circ_chartmap_simple.nc
+13fdc38cf1847d3e56df550ab3b9f2e55a6910e49719e75262e86badbac9d630  wout_circ.nc
 ```
 
-Cross-code validation of the committed files (5 keV deuteron at
-`s_tor = 0.3`, SIMPLE canonical frequency API vs POTATO `itest_type = 4` on
-the same EQDSK): trapped `xi = 0.3` gives `omega_b = 1.2805e4` (SIMPLE
-chartmap) vs `1.288e4 rad/s` (POTATO) and `omega_phi = -273.3` vs
-`-272.6 rad/s`; passing `xi = 0.8` gives `omega_b = 3.7288e4` vs `3.738e4`
-and `omega_phi = 8.455e4` vs `8.506e4 rad/s` (all within 0.7 %). The VMEC
-variant agrees to 2.5 % in `omega_b` (trapped precession differs by ~13 %),
-consistent with the force-balanced re-solve caveat above.
+Three-way validation of the committed files (5 keV deuteron at
+`s_tor = 0.3`; SIMPLE canonical frequency API on both inputs vs POTATO
+`itest_type = 4` on the same EQDSK, all in rad/s):
+
+| quantity | SIMPLE chart map | SIMPLE wout | POTATO |
+|---|---|---|---|
+| trapped `xi = 0.3` `omega_b` | 1.2809e4 | 1.2877e4 | 1.288e4 |
+| trapped `xi = 0.3` `omega_phi` | -273.3 | -268.4 | -272.6 |
+| passing `xi = 0.8` `omega_b` | 3.7358e4 | 3.7371e4 | 3.738e4 |
+| passing `xi = 0.8` `omega_phi` | 8.4556e4 | 8.5058e4 | 8.506e4 |
+
+All pairwise differences are below 2 % (most below 0.5 %); the remaining
+spread reflects interpolation and the different radial/angle
+discretizations, not physics differences. The alpha seeds (trapped and
+passing) also return `status = SUCCESS` on both SIMPLE inputs.
 
 All chart-map geometry uses centimetres. The radial coordinate is
 `rho_tor = sqrt(s_tor)`. The VMEC file uses VMEC conventions (SI, `s_tor`).
