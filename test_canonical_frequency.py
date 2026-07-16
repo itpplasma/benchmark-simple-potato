@@ -2,8 +2,11 @@
 # Test the new SIMPLE canonical frequency API
 # ==========================================================
 
+from pathlib import Path
+
 import numpy as np
 import pysimple
+
 print("Using pysimple from:")
 print(pysimple.__file__)
 print()
@@ -15,11 +18,29 @@ print("="*60)
 print()
 
 # ==========================================================
-#  equilibrium  #VMEC    or   Circ Chartmap
+#  equilibrium: "chartmap" (circular benchmark) or "vmec"
 # ==========================================================
 
-#equilibrium = "/proj/plasma/CODE/khanm/SIMPLE-canonical-frequencies/test/test_data/wout.nc"
-equilibrium = "/proj/plasma/CODE/khanm/benchmark-simple-potato/rung0/circ_chartmap_simple.nc"
+CASE = "chartmap"
+
+REPO = Path(__file__).resolve().parent
+
+if CASE == "chartmap":
+    equilibrium = str(REPO / "rung0" / "circ_chartmap_simple.nc")
+    # Rung 0 benchmark particle: 5 keV deuterium (matches
+    # rung0/simple_run/simple.in and the POTATO case). Without these
+    # overrides SIMPLE traces its default 3.5 MeV alpha, which is
+    # unconfined in this small circular tokamak and is reported as
+    # FREQ_ORBIT_LOST.
+    particle_kwargs = dict(n_e=1, n_d=2, facE_al=700.0)
+    # Benchmark seed: rho_tor = sqrt(0.3), theta = 0, phi = 0, v/v0 = 1.
+    # xi = 0.3 is the trapped case; xi = 0.8 is the passing check.
+    particle = np.array([np.sqrt(0.3), 0.0, 0.0, 1.0, 0.3])
+else:
+    equilibrium = str(REPO.parent / "SIMPLE" / "test" / "test_data" / "wout.nc")
+    particle_kwargs = {}
+    particle = np.array([0.4, 0.7, 0.1, 1.0, 0.1])   # Trapped
+    # particle = np.array([0.4, 0.7, 0.1, 1.0, 0.9])  # Passing
 
 # ==========================================================
 # Initialize SIMPLE
@@ -27,25 +48,21 @@ equilibrium = "/proj/plasma/CODE/khanm/benchmark-simple-potato/rung0/circ_chartm
 
 print("Initializing SIMPLE...")
 print()
-npoiper2=1024   #2048
+npoiper2 = 1024   # 2048
 print("Before init")
-print(f"Equilibrium file : {equilibrium}") # Require .nc file  
+print(f"Equilibrium file : {equilibrium}")
 pysimple.init(
     equilibrium,
     deterministic=True,
     ntestpart=1,
-    npoiper2=npoiper2, #2048,
+    npoiper2=npoiper2,
     trace_time=1e-3,
+    **particle_kwargs,
 )
 
 print("Initialization completed.")
 print()
-# ==========================================================
-# Trapped particle (VMEC test case)
-# ==========================================================
 
-particle = np.array([0.4, 0.7, 0.1, 1.0, 0.1])   # Trapped
-#particle = np.array([0.4, 0.7, 0.1, 1.0, 0.9])  # Passing
 # ==========================================================
 # Compute canonical frequencies
 # ==========================================================
@@ -66,7 +83,7 @@ print("="*72)
 print("Initial Particle")
 print("="*72)
 
-print(f"s                          : {particle[0]:.6f}")
+print(f"s / rho_tor                : {particle[0]:.6f}")
 print(f"theta (rad)                : {particle[1]:.6f}")
 print(f"phi (rad)                  : {particle[2]:.6f}")
 print(f"v/v0                       : {particle[3]:.6f}")
@@ -112,23 +129,28 @@ print(f"n_periods                  : {result['n_periods']}")
 print(f"npoiper2                   : {npoiper2}")
 print(f"Trace time (s)             : 1.0e-3")
 print()
+
 # ==========================================================
-# FREQUENCY Consistency check
+# FREQUENCY Consistency check (only meaningful on success)
 # ==========================================================
 
-omega_check = 2.0 * np.pi / result["period"]
-difference = omega_check - result["omega_b"]
+if result["status"] == 0:
+    omega_check = 2.0 * np.pi / result["period"]
+    difference = omega_check - result["omega_b"]
 
-print()
-print("="*72)
-print("               CONSISTENCY CHECK")
-print("="*72)
+    print()
+    print("="*72)
+    print("               CONSISTENCY CHECK")
+    print("="*72)
 
-print(f"2*pi/period (rad/s)          : {omega_check:.10e}")
-print(f"Returned omega_b (rad/s)     : {result['omega_b']:.10e}")
-print(f"Difference                   : {difference:.3e}")
+    print(f"2*pi/period (rad/s)          : {omega_check:.10e}")
+    print(f"Returned omega_b (rad/s)     : {result['omega_b']:.10e}")
+    print(f"Difference                   : {difference:.3e}")
 
-if abs(difference) < 1.0e-8:
-    print("\nPASS: omega_b agrees with  2*pi/period")
+    if abs(difference) < 1.0e-8:
+        print("\nPASS: omega_b agrees with  2*pi/period")
+    else:
+        print("\nWARNING: omega_b differs from 2*pi/period")
 else:
-    print("\nWARNING: omega_b differs from 2*pi/period")
+    print()
+    print(f"Non-success status {result['status']}: consistency check skipped.")
