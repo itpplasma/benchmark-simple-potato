@@ -8,46 +8,101 @@ comparing trajectories.
 
 | Path | Purpose |
 |---|---|
-| `potato_run/circ.eqdsk` | POTATO equilibrium: synthetic 65 x 65 EQDSK with `R0 = 1.60 m`, `a = 0.50 m`, and `B0 = 2.0 T` |
-| `circ_chartmap.nc` | Direct EQDSK-to-Boozer-chart-map output on the converter grid; provenance input, not the SIMPLE run input |
-| `circ_chartmap_nzeta4.nc` | Axisymmetric four-plane expansion of `circ_chartmap.nc`; intermediate file |
+| `potato_run/circ.eqdsk` | POTATO equilibrium: synthetic 129 x 129 EQDSK with `R0 = 6.20 m`, `a = 2.00 m`, and `B0 = 5.3 T` (reactor size) |
+| `circ_chartmap_simple.converter.nc` | Direct EQDSK-to-Boozer-chart-map output on the converter grid; provenance input, not the SIMPLE run input |
 | `circ_chartmap_simple.nc` | SIMPLE input: axis-complete uniform grid with 101 radial points, 48 poloidal points, and 4 toroidal planes |
+| `wout_circ.nc` | VMEC variant of the same case (VMEC++ fixed-boundary re-solve); exercises SIMPLE's native VMEC input path |
 | `simple_run/circ_chartmap.nc` | Relative symlink to `circ_chartmap_simple.nc` under the filename used by `simple.in` |
 
-The EQDSK is byte-identical to NEO-RT's public POTATO golden-record input. Its
-generator is
-[`gen_circular_eqdsk.py`](https://github.com/itpplasma/NEO-RT/blob/main/POTATO/test/golden_record_resonance/gen_circular_eqdsk.py).
-The chart map was produced from that EQDSK with libneo's merged
-[EQDSK-to-Boozer converter](https://github.com/itpplasma/libneo/pull/346).
-`expand_chartmap_nzeta.py` and `fix_chartmap_for_simple.py` reproduce the two
-derived chart maps from `circ_chartmap.nc`.
+The equilibrium is reactor-size so that both the 5 keV deuterium benchmark
+particle and SIMPLE's default 3.5 MeV alpha are confined at mid-radius; on the
+earlier small machine (`R0 = 1.6 m`) a 3.5 MeV alpha left through the edge
+before one bounce.
+
+The generator is [`gen_circular_eqdsk.py`](gen_circular_eqdsk.py) in this
+directory. It derives from NEO-RT's public POTATO gate generator but writes
+reactor-scale parameters and a poloidal flux that realizes the flux-surface
+safety factor `q(r) = 1.5 + 2.5 (r/a)^2` exactly on the concentric-circle
+model (the NEO-RT original uses a cylindrical midplane estimate). The file is
+therefore no longer byte-identical to NEO-RT's golden-record input.
+Regenerating the EQDSK needs libneo with the fixed-column g-file header
+writer (itpplasma/libneo#396); regenerating the chart map needs libneo with
+the corrected covariant `B_theta` and the `psimax` boundary stop in the
+EQDSK-to-chartmap converter (itpplasma/libneo#399).
+
+## Converting tokamak equilibria (any g-file)
+
+Two repository scripts turn an axisymmetric EQDSK g-file into SIMPLE inputs;
+both work for shaped tokamaks, not only this circular case:
+
+```sh
+# EQDSK -> Boozer chart map on the SIMPLE grid (libneo converter + regrid)
+PYTHONPATH=../libneo/python:../SIMPLE/build/_deps/libneo-build \
+    python tools/eqdsk_to_simple_chartmap.py input.eqdsk output_chartmap.nc
+
+# EQDSK -> VMEC wout NetCDF (VMEC++ fixed-boundary re-solve)
+PYTHONPATH=../libneo/python \
+    python tools/eqdsk_to_vmec.py input.eqdsk wout_output.nc
+```
+
+`eqdsk_to_simple_chartmap.py` reproduces `circ_chartmap_simple.nc` (and keeps
+the converter-grid intermediate next to it). It stops the converter's
+flux-surface scan at the g-file boundary flux (`psimax`). This matters for
+synthetic equilibria without an X-point, such as this circular case: their
+`psi` keeps rising beyond the LCFS, so the converter's default field-line
+"separatrix search" runs to the computational box edge and would place `s = 1`
+on the wrong surface (besides taking hours instead of seconds). `eqdsk_to_vmec.py` reproduces
+`wout_circ.nc`; it extracts the boundary, pressure, and a safety-factor
+profile computed from the psi map itself (robust against g-files whose q
+column is inconsistent with their psi map), then re-solves the fixed-boundary
+equilibrium with VMEC++. Because the concentric-circle model field is not a
+Grad-Shafranov solution, the VMEC variant is force-balanced with the same
+boundary and profiles rather than bit-identical: expect axis quantities to
+differ at the few-percent level (Shafranov shift). Treat chart-map and VMEC
+runs as two representations of the same case, not as one identical field.
 
 Committed equilibrium checksums:
 
 ```text
-ae5c55a224c5a2166a3ccee70eecc5505d4f1e0f4d103aad477ffcc5c8ae1580  potato_run/circ.eqdsk
-d15cd0a7ddec98c8427fc270c3b1935050684a606c7ad72a152e8dfbf6485b70  circ_chartmap.nc
-0ebaba6a4addecfe48ca9b6e6f745c036834369ee638cb03ca63e8629ba949a8  circ_chartmap_nzeta4.nc
-345b1542f5f1957fe2097d1b016feebd23a7ed39ec78c85c457ae1943f9ca0f7  circ_chartmap_simple.nc
+56a85dbec7661b6f119ff666f8089ab80907acc17191d8dee3c58c5be71495b1  potato_run/circ.eqdsk
+ebdaf7e73b889f379a749ee299b54a9e8db4742f73dd41bc066069f4547ed4e2  circ_chartmap_simple.converter.nc
+d778be3b96ca54fa82d97f1968da928b59678f84a95d89429c16f2c3e864c83a  circ_chartmap_simple.nc
+90972759c9c345aa27785b85a8edca8bcbcc3ec5bc2d3bc2150ffe0ac3e3cd57  wout_circ.nc
 ```
 
-Reproduce the derived files without overwriting the committed copies:
-
-```sh
-python rung0/expand_chartmap_nzeta.py \
-    rung0/circ_chartmap.nc /tmp/circ_chartmap_nzeta4.nc 4
-python rung0/fix_chartmap_for_simple.py \
-    rung0/circ_chartmap.nc /tmp/circ_chartmap_simple.nc 101 4 101
-sha256sum /tmp/circ_chartmap_nzeta4.nc /tmp/circ_chartmap_simple.nc
-```
+Cross-code validation of the committed files (5 keV deuteron at
+`s_tor = 0.3`, SIMPLE canonical frequency API vs POTATO `itest_type = 4` on
+the same EQDSK): trapped `xi = 0.3` gives `omega_b = 1.2805e4` (SIMPLE
+chartmap) vs `1.288e4 rad/s` (POTATO) and `omega_phi = -273.3` vs
+`-272.6 rad/s`; passing `xi = 0.8` gives `omega_b = 3.7288e4` vs `3.738e4`
+and `omega_phi = 8.455e4` vs `8.506e4 rad/s` (all within 0.7 %). The VMEC
+variant agrees to 2.5 % in `omega_b` (trapped precession differs by ~13 %),
+consistent with the force-balanced re-solve caveat above.
 
 All chart-map geometry uses centimetres. The radial coordinate is
-`rho_tor = sqrt(s_tor)`. The three chart maps represent the same converted
-field at different grid stages; use only `circ_chartmap_simple.nc` for the
-SIMPLE run.
+`rho_tor = sqrt(s_tor)`. The VMEC file uses VMEC conventions (SI, `s_tor`).
 
 No experimental equilibrium is stored here. Rung 5 remains blocked until a
 shareable equilibrium and its provenance are agreed.
+
+## Benchmark particle
+
+The Rung 0 particle is a 5 keV deuteron: `n_e = 1`, `n_d = 2`,
+`facE_al = 700` in `simple.in`, `E_alpha = 5d3` eV with `A = 2`, `Z = 1` in
+`potato.in`. The same overrides apply to the Python API:
+
+```python
+pysimple.init("rung0/circ_chartmap_simple.nc", deterministic=True,
+              n_e=1, n_d=2, facE_al=700.0, ...)
+```
+
+SIMPLE's default 3.5 MeV alpha is also confined on this equilibrium, so quick
+API smoke tests without overrides now work; quantitative comparisons against
+POTATO still require the deuteron settings above.
+
+Mind the radial coordinate of the seed: the chart map's public coordinate is
+`rho_tor = sqrt(s_tor)` (benchmark surface: `sqrt(0.3) = 0.5477...`), while
+the VMEC file uses `s_tor` directly (same surface: `0.3`).
 
 ## Prepare writable run directories
 
@@ -145,6 +200,7 @@ retain the historical name `lambda` for `xi`. `R` and `Z` are in centimetres.
 The last row of `profile_poly.in` is deliberately zero: Rung 0 has no radial
 electric potential, matching the SIMPLE Hamiltonian. A nonzero last row can
 change the orbit class and makes POTATO's normalized momentum vary.
+`gen_circular_eqdsk.py` now writes the zero row directly.
 
 ## Post-process the trajectories
 

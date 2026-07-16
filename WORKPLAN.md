@@ -71,6 +71,11 @@ the trapped `xi = 0.3` orbit changes sign in `v_par`; POTATO writes a finite
 single orbit. Record code commits and exact input files in the Rung 0 result
 note. Also record output units and anything that required guesswork.
 
+Note (2026-07-16): the circular equilibrium was regenerated at reactor size
+(`R0 = 6.2 m`, `a = 2.0 m`, `B0 = 5.3 T`; see `rung0/README.md`), and a VMEC
+variant (`rung0/wout_circ.nc`) was added. Results produced on the earlier
+`R0 = 1.6 m` machine are superseded; rerun Rung 0 checks on the new inputs.
+
 For Python-driven SIMPLE runs, use the `pysimple` interface from a local virtual
 environment (`./setup-venv.sh` in this repo installs it from `../SIMPLE`).
 `examples/orbits_and_cuts.py` is now a `pysimple.trace_orbit()` plotting example;

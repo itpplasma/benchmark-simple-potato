@@ -27,14 +27,18 @@ Build SIMPLE and NEO-RT/POTATO, then follow
 [`rung0/README.md`](rung0/README.md). It contains copy-paste run commands,
 the input manifest, coordinate conventions, and Rung 0 acceptance checks.
 
-The two production equilibrium inputs are already tracked:
+The production equilibrium inputs are already tracked:
 
-- `rung0/circ_chartmap_simple.nc` for SIMPLE;
+- `rung0/circ_chartmap_simple.nc` for SIMPLE (Boozer chart map);
+- `rung0/wout_circ.nc` for SIMPLE's native VMEC input path;
 - `rung0/potato_run/circ.eqdsk` for POTATO.
 
-They describe the same public synthetic circular equilibrium through the two
-codes' native input formats. The field-representation error must still be
-measured before comparing orbits.
+They describe the same public synthetic circular reactor-size equilibrium
+(`R0 = 6.2 m`, `a = 2.0 m`, `B0 = 5.3 T`) through the codes' native input
+formats. `tools/eqdsk_to_simple_chartmap.py` and `tools/eqdsk_to_vmec.py`
+convert any axisymmetric tokamak g-file into the same two SIMPLE input
+formats. The field-representation error must still be measured before
+comparing orbits.
 
 SIMPLE commit
 [`08b85a1`](https://github.com/itpplasma/SIMPLE/commit/08b85a11279363693d6b1d5962772ace8df4ea45)
