@@ -124,6 +124,36 @@ the benchmark:
   secular drift controlled by the local tolerance \citep{albert2020jcp}.
 \end{itemize}
 
+For the executable handoff we use POTATO's dimensionless variables and keep
+their reference quantities explicit. With
+$v_0=\sqrt{2E_{\rm ref}/m}$, $p=v/v_0$,
+$\xi=v_\parallel/v$, $\phi_{\rm elec}=e\Phi/E_{\rm ref}$, and
+$\rho_0=mc v_0/e$, the file records
+\begin{align}
+  H_0 &= p^2 + \phi_{\rm elec}, \\
+  J_\perp &= \frac{p^2(1-\xi^2)}{B}, \\
+  \psi^* &= \psi + \rho_0 p\xi h_\varphi = \frac{c}{e}p_\varphi .
+\end{align}
+This is the invariant-space convention used for POTATO orbit classes
+\citep{buchholz2022}. The present SIMPLE Hamiltonian has no electrostatic
+term, so conversion is allowed only for $\phi_{\rm elec}=0$, where
+$H_0=p^2$. POTATO writes $B$ in gauss, $v_0$ in cm/s, and all three fluxes
+$\psi^*,\psi_{\rm axis},\psi_{\rm edge}$ in one g-file gauge and in
+G\,cm$^2$.
+
+SIMPLE exposes the portable, axis-zero and outward-positive quantity
+\begin{equation}
+  p_\varphi^{\rm SIMPLE}
+  = \operatorname{sign}(\psi_{\rm edge}-\psi_{\rm axis})
+    (\psi^*_{\rm POTATO}-\psi_{\rm axis}).
+\end{equation}
+No additional factor $e/c$ remains because both sides use $(c/e)p_\varphi$.
+If reference velocities differ, $a=v_{0,\rm POTATO}/v_{0,\rm SIMPLE}$ gives
+$H_{0,\rm SIMPLE}=a^2H_{0,\rm POTATO}$ and
+$J_{\perp,\rm SIMPLE}=a^2J_{\perp,\rm POTATO}$. Time is
+$\tau=v_0t$ in both public interfaces; SIMPLE's private symplectic
+$\sqrt{2}$ rescaling does not enter the handoff.
+
 \subsection{Orbit classes}
 \label{sec:classes}
 
@@ -287,12 +317,10 @@ attribute. A Python layer
 where one call integrates $N$ particles for a full trace time, so no
 per-timestep call overhead occurs at the language boundary.
 
-Current limitations, reviewed on 2026-07-10 and tracked in
-\code{WORKPLAN.md}: the trajectory example works through
-\code{pysimple.trace\_orbit}, but the dedicated Poincar\'e-cut routine has no
-wrapped public driver; bounce and precession frequencies are not computed by
-SIMPLE; and SIMPLE has no direct EQDSK input path. Orbit classification uses
-an independent in-code implementation of tip and period detection.
+The Python API now exposes invariant conversion and canonical bounce and
+precession frequencies. SIMPLE still has no direct EQDSK input path; the
+benchmark therefore keeps equilibrium conversion and cross-code orchestration
+in this repository.
 
 \subsection{POTATO}
 

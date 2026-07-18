@@ -211,11 +211,29 @@ POTATO_EXE=$(realpath ../NEO-RT/POTATO/build/potato.x)
 With `itest_type = 4`, the trajectory is written to `fort.100`. Its columns
 are `R phi Z p xi dxi/dtau`, although the POTATO input and output interfaces
 retain the historical name `lambda` for `xi`. `R` and `Z` are in centimetres.
+The same run writes `potato_invariants.dat`; its header fixes the normalization
+and flux gauge used by the cross-code conversion.
 
 The last row of `profile_poly.in` is deliberately zero: Rung 0 has no radial
 electric potential, matching the SIMPLE Hamiltonian. A nonzero last row can
 change the orbit class and makes POTATO's normalized momentum vary.
 `gen_circular_eqdsk.py` now writes the zero row directly.
+
+Convert the POTATO state into every regular SIMPLE cut state with:
+
+```sh
+python tools/potato_invariants_to_simple.py \
+  "$run_root/potato/potato_invariants.dat" \
+  rung0/circ_chartmap_simple.nc \
+  --output "$run_root/simple/simple_candidates.json"
+```
+
+The default 5 keV deuteron settings make both reference velocities identical.
+The command rejects a mismatch unless `--allow-v0-rescale` is supplied, in
+which case it applies `v0_POTATO/v0_SIMPLE`. It also reconstructs all three
+invariants from every returned state. Multiple roots are expected and remain
+ordered from HFS to LFS; the file does not select an outer or inner orbit. The
+source `rho_pol` and SIMPLE `rho_tor` remain separate coordinates.
 
 ## Post-process the trajectories
 

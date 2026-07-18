@@ -61,6 +61,8 @@ POTATO modes used here:
   (`R_start rho_pol omega_b omega_phi taub delphi ierr`).
   `omega_b` and `omega_phi` are physical angular frequencies; the length-like
   `taub` must be divided by POTATO's reference speed `v0` to obtain seconds.
+- Both modes also write `potato_invariants.dat`, the versioned magnetic-only
+  handoff consumed by `tools/potato_invariants_to_simple.py`.
 
 POTATO retains the input key `orbit_lambda`, but its value is the pitch cosine
 `xi = v_parallel/v`. Reserve `Lambda = mu B0/E` for the analytic trapping
@@ -91,12 +93,13 @@ overlay one trapped orbit.
    differences. The chart maps in `rung0/` were produced by libneo's merged
    [EQDSK-to-Boozer converter](https://github.com/itpplasma/libneo/pull/346),
    then resampled for SIMPLE as documented in `rung0/README.md`.
-2. Single banana orbit `[manual]`: use a deuteron with `E = 5 keV` and the same
-   pitch cosine `xi` in both codes. Run SIMPLE first. Read the first finite
-   `R,Z` sample from `orbits.nc` and use it as POTATO's `orbit_Rstart` and
-   `orbit_Zstart`. Do not set `rho_tor` and `rho_pol` numerically equal; they
-   label different fluxes. Overlay SIMPLE's direct `R,Z` variables with
-   columns 1 and 3 of POTATO's `fort.100`.
+2. Single banana orbit `[works]`: use a deuteron with `E = 5 keV`. Run POTATO,
+   then convert its `potato_invariants.dat` with
+   `tools/potato_invariants_to_simple.py`. The converter checks the potential,
+   flux gauge, and reference velocity and retains all SIMPLE cut roots in
+   POTATO `R_c` order. Choose a root only from explicit orbit evidence (for
+   example the nearest physical `R,Z` start); do not equate `rho_tor` and
+   `rho_pol` or infer an outer/inner class from a flux label.
 3. Invariant drift: energy and p_phi (psi*) drift per bounce for both codes,
    against step size and tolerance.
 
@@ -180,7 +183,7 @@ Ordered by what Track A needs next.
    (rung 2 exit criterion).
 6. `[NEO-RT]` Register `test_freq_scan` as an automated test; align its
    output columns with POTATO's `freq_scan.dat`.
-7. `[interfaces]` Keep the adapter layer in this repo until stable, then
+7. `[done:NEO-RT/SIMPLE, testing:this repo]` Keep the adapter layer in this repo until stable, then
    upstream: batch semantics (one call = N particles x full trace), defaults
    that run the circular field without extra configuration, and per-call
    rather than per-timestep language crossings.
