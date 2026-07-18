@@ -80,6 +80,9 @@ Reusable post-processing scripts live in `tools/`. In particular,
 `analyze_simple_orbit.py` extracts interpolated trapped-orbit tips and
 frequencies from SIMPLE output, while `compare_orbits.py` overlays matched
 SIMPLE and POTATO trajectories in physical cylindrical coordinates.
+`potato_invariants_to_simple.py` validates POTATO's versioned invariant
+handoff and returns every matching SIMPLE cut state without guessing an
+outer/inner orbit class.
 
 If SIMPLE was configured before the environment existed, reactivate `.venv`
 and reinstall its Python package:
