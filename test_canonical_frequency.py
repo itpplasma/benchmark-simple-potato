@@ -16,31 +16,35 @@ print("="*60)
 print("      SIMPLE CANONICAL FREQUENCY TEST")
 print("="*60)
 print()
+# ----------------------------------------------------------------------
+# Benchmark particle (5 keV deuteron)
+# ----------------------------------------------------------------------
+particle_kwargs = dict(n_e=1, n_d=2, facE_al=700.0)
+xi = 0.8        # passing
+# xi = 0.3      # trapped
+
 
 # ==========================================================
 #  equilibrium: "chartmap" (circular benchmark) or "vmec"
 # ==========================================================
-
-CASE = "chartmap"
+CASE ="vmec"     # "chartmap" or "vmec"
 
 REPO = Path(__file__).resolve().parent
 
-if CASE == "chartmap":
+if CASE =="chartmap":
     equilibrium = str(REPO / "rung0" / "circ_chartmap_simple.nc")
-    # Rung 0 benchmark particle: 5 keV deuterium (matches
-    # rung0/simple_run/simple.in and the POTATO case). Without these
-    # overrides SIMPLE traces its default 3.5 MeV alpha, which is
-    # unconfined in this small circular tokamak and is reported as
-    # FREQ_ORBIT_LOST.
-    particle_kwargs = dict(n_e=1, n_d=2, facE_al=700.0)
+    # Benchmark particle:
+    # 5 keV deuteron (matches Rung 0 benchmark).
+    # Without these overrides SIMPLE uses its default
+    # 3.5 MeV alpha particle.
     # Benchmark seed: rho_tor = sqrt(0.3), theta = 0, phi = 0, v/v0 = 1.
-    # xi = 0.3 is the trapped case; xi = 0.8 is the passing check.
-    particle = np.array([np.sqrt(0.3), 0.0, 0.0, 1.0, 0.3])
+    particle = np.array([np.sqrt(0.3), 0.0, 0.0, 1.0, xi])
+
 else:
-    equilibrium = str(REPO.parent / "SIMPLE" / "test" / "test_data" / "wout.nc")
-    particle_kwargs = {}
-    particle = np.array([0.4, 0.7, 0.1, 1.0, 0.1])   # Trapped
-    # particle = np.array([0.4, 0.7, 0.1, 1.0, 0.9])  # Passing
+    equilibrium = str(REPO / "rung0" / "wout_circ.nc")
+    print(f"Loading equilibrium: {equilibrium}")
+    # particle_kwargs = {}   # default 3.5 MeV alpha
+    particle = np.array([0.3, 0.0, 0.0, 1.0, xi])  
 
 # ==========================================================
 # Initialize SIMPLE
@@ -49,6 +53,7 @@ else:
 print("Initializing SIMPLE...")
 print()
 npoiper2 = 1024   # 2048
+trace_time = 1e-3
 print("Before init")
 print(f"Equilibrium file : {equilibrium}")
 pysimple.init(
@@ -56,7 +61,7 @@ pysimple.init(
     deterministic=True,
     ntestpart=1,
     npoiper2=npoiper2,
-    trace_time=1e-3,
+    trace_time=trace_time,
     **particle_kwargs,
 )
 
@@ -100,8 +105,11 @@ print("="*72)
 
 status_string = "SUCCESS" if result["status"] == 0 else f"ERROR ({result['status']})"
 
-print(f"Status                       : {status_string}")
-print(f"Orbit class                  : {result['orbit_class']}")
+equilibrium_name = "VMEC" if CASE == "vmec" else "Chart-map"
+
+print(f"{'Status':30}: {status_string}")
+print(f"{'Orbit class':30}: {result['orbit_class']}")
+print(f"{'Equilibrium':30}: {equilibrium_name}")
 print()
 
 print(f"Bounce period (s)            : {result['period']:.10e}")
@@ -127,7 +135,7 @@ print("="*72)
 print(f"Integrator                 : midpoint")
 print(f"n_periods                  : {result['n_periods']}")
 print(f"npoiper2                   : {npoiper2}")
-print(f"Trace time (s)             : 1.0e-3")
+print(f"Trace time (s)             : {trace_time}")
 print()
 
 # ==========================================================
